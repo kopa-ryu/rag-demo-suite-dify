@@ -1,10 +1,51 @@
 services:
   api:
     networks:
+      - langfuse_network  # Langfuse ネットワーク
       - firecrawl_backend
       - ssrf_proxy_network
       - default
 
+  langfuse-web:
+    image: langfuse/langfuse:3
+    container_name: langfuse-web
+    ports:
+      - "3001:3000"  # ホストのポートを 3001 に変更
+    networks:
+      - langfuse_network
+    environment:
+      DATABASE_URL: "postgresql://langfuse_user:password@langfuse-postgres:5432/langfuse_db"
+      REDIS_URL: "redis://langfuse-redis:6379"
+
+  langfuse-worker:
+    image: langfuse/langfuse-worker:3
+    container_name: langfuse-worker
+    networks:
+      - langfuse_network
+    environment:
+      DATABASE_URL: "postgresql://langfuse_user:password@langfuse-postgres:5432/langfuse_db"
+      REDIS_URL: "redis://langfuse-redis:6379"
+
+  langfuse-postgres:
+    image: postgres:15-alpine
+    container_name: langfuse-postgres
+    networks:
+      - langfuse_network
+    environment:
+      POSTGRES_USER: langfuse_user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: langfuse_db
+      LANGFUSE_API_URL: "http://langfuse-web:3000"  # Langfuse の URL を指定
+
+  langfuse-redis:
+    image: redis:7
+    container_name: langfuse-redis
+    networks:
+      - langfuse_network
+
 networks:
   firecrawl_backend:
     external: true
+
+  langfuse_network:  # Langfuse ネットワークを追加
+    driver: bridge
